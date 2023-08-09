@@ -3,6 +3,7 @@ import bcrypt
 from .models import get_user
 from .database import get_db
 from flask_jwt_extended import jwt_required, create_access_token
+from .utils import backup_database, restore_database
 
 # Crear un Blueprint
 routes = Blueprint('routes', __name__)
@@ -10,7 +11,6 @@ routes = Blueprint('routes', __name__)
 @routes.route('/')
 def hello_world():
     return "Welcome to the Globant Challenge Solution"
-
 
 @routes.route('/login', methods=['POST'])
 def login():
@@ -41,7 +41,6 @@ def login():
     
     return jsonify({"msg": "Invalid username or password"}), 401
 
-
 @routes.route('/jobs/')
 @jwt_required()
 def get_jobs():
@@ -53,7 +52,6 @@ def get_jobs():
     conn.close()
     
     return jsonify([dict(job) for job in jobs])
-
 
 @routes.route('/departments/')
 @jwt_required()
@@ -67,7 +65,6 @@ def get_departments():
     
     return jsonify([dict(department) for department in departments])
 
-
 @routes.route('/hired_employees/')
 @jwt_required()
 def get_hired_employees():
@@ -79,3 +76,19 @@ def get_hired_employees():
     conn.close()
     
     return jsonify([dict(employee) for employee in hired_employees])
+
+@routes.route('/backup', methods=['POST'])
+@jwt_required()
+def backup():
+    if backup_database():
+        return jsonify({"message": "Backup successful"}), 200
+    else:
+        return jsonify({"message": "Backup failed"}), 500
+
+@routes.route('/restore', methods=['POST'])
+@jwt_required()
+def restore():
+    if restore_database():
+        return jsonify({"message": "Restoration successful"}), 200
+    else:
+        return jsonify({"message": "Restoration failed"}), 500

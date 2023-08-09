@@ -1,56 +1,30 @@
+import sqlite3
 import csv
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
+from datetime import datetime
 
-Base = declarative_base()
+# Conexión a la base de datos SQLite
+conn = sqlite3.connect('mydatabase.db')  # Cambia 'mydatabase.db' al nombre de tu archivo de base de datos
+cursor = conn.cursor()
 
-class Department(Base):
-    __tablename__ = 'departments'
-    id = Column(Integer, primary_key=True)
-    department = Column(String)
+# Leer el archivo CSV y insertar datos en la tabla
+with open('hired_employees.csv', 'r') as csv_file:  # Cambia 'hired_employees.csv' al nombre de tu archivo CSV
+    csv_reader = csv.reader(csv_file)
+    for row in csv_reader:
+        employee_id = int(row[0])
+        name = row[1]
+        datetime_str = row[2]
+        department_id = int(row[3]) if row[3] else None
+        job_id = int(row[4]) if row[4] else None
+        
+        # Convertir la fecha y hora si no está vacía
+        if datetime_str:
+            datetime_obj = datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%SZ")
+        else:
+            datetime_obj = None
+        
+        cursor.execute("INSERT INTO hired_employees (id, name, datetime, department_id, job_id) VALUES (?, ?, ?, ?, ?)", 
+                       (employee_id, name, datetime_obj, department_id, job_id))
 
-class Job(Base):
-    __tablename__ = 'jobs'
-    id = Column(Integer, primary_key=True)
-    job = Column(String)
-
-class HiredEmployee(Base):
-    __tablename__ = 'hired_employees'
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    datetime = Column(String)
-    department_id = Column(Integer, ForeignKey('departments.id'))
-    job_id = Column(Integer, ForeignKey('jobs.id'))
-
-DATABASE_URL = "sqlite:///mydatabase.db"
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine)
-
-def load_csv_to_db(session, model, csv_path):
-    with open(csv_path, 'r') as file:
-        reader = csv.reader(file)
-        next(reader)  # Saltar el encabezado
-        for row in reader:
-            instance = model(**{
-                column.name: value for column, value in zip(model.__table__.columns, row)
-            })
-            session.add(instance)
-
-def main():
-    # Crear una nueva sesión
-    session = SessionLocal()
-
-    # Cargar datos desde los CSVs
-    load_csv_to_db(session, Department, 'departments.csv')
-    load_csv_to_db(session, Job, 'jobs.csv')
-    load_csv_to_db(session, HiredEmployee, 'hired_employees.csv')
-
-    # Confirmar cambios
-    session.commit()
-
-    # Cerrar la sesión
-    session.close()
-
-if __name__ == '__main__':
-    main()
+# Confirmar los cambios y cerrar la conexión
+conn.commit()
+conn.close()
