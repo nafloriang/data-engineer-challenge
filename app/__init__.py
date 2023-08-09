@@ -1,6 +1,15 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import JWTManager
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mydatabase.db'  # Puedes cambiar esto a otro sistema de base de datos SQL si lo prefieres
-db = SQLAlchemy(app)
+
+# JWT Configuration
+app.config['SECRET_KEY'] = 'your_secret_key_here'
+app.config['JWT_TOKEN_LOCATION'] = ['headers', 'cookies']
+
+# Initialize JWT Manager
+jwt = JWTManager(app)
+
+# Registrar el Blueprint
+from .routes import routes
+app.register_blueprint(routes)
