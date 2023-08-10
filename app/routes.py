@@ -106,3 +106,78 @@ def insert_data(table_name):
     conn.close()
 
     return jsonify({"message": "Insertion successful"}), 200
+
+@routes.route('/metrics/employees_by_job_and_department', methods=['GET'])
+@jwt_required()
+def employees_by_job_and_department():
+    conn = get_db()
+    
+    # Consulta SQL para el Requisito 1
+    query = """
+  SELECT 
+    departments.Department, 
+    jobs.Job,
+    SUM(CASE WHEN strftime('%m', Datetime) BETWEEN '01' AND '03' THEN 1 ELSE 0 END) AS Q1,
+    SUM(CASE WHEN strftime('%m', Datetime) BETWEEN '04' AND '06' THEN 1 ELSE 0 END) AS Q2,
+    SUM(CASE WHEN strftime('%m', Datetime) BETWEEN '07' AND '09' THEN 1 ELSE 0 END) AS Q3,
+    SUM(CASE WHEN strftime('%m', Datetime) BETWEEN '10' AND '12' THEN 1 ELSE 0 END) AS Q4
+FROM 
+    hired_employees
+    JOIN departments ON hired_employees.department_id = departments.Id
+    JOIN jobs ON hired_employees.job_id = jobs.Id
+WHERE 
+    strftime('%Y', Datetime) = '2021'
+GROUP BY 
+    departments.Department, jobs.Job
+ORDER BY 
+    departments.Department ASC, jobs.Job ASC;
+    """
+    result = conn.execute(query).fetchall()
+    conn.close()
+
+    response = []
+    for row in result:
+        response.append({
+            'department': row['department'],
+            'job': row['job'],
+            'Q1': row['Q1'],
+            'Q2': row['Q2'],
+            'Q3': row['Q3'],
+            'Q4': row['Q4']
+        })
+
+    return jsonify(response)
+
+@routes.route('/metrics/department_hiring_above_average', methods=['GET'])
+@jwt_required()
+def department_hiring_above_average():
+    conn = get_db()
+    
+    # Consulta SQL para el Requisito 2
+    query = """
+   SELECT departments.Id AS id, departments.Department AS department, COUNT(hired_employees.id) AS hired
+FROM hired_employees
+JOIN departments ON hired_employees.department_id = departments.id
+WHERE strftime('%Y', Datetime) = '2021'
+GROUP BY departments.Id, departments.Department
+HAVING hired > (SELECT AVG(employee_count) FROM 
+                    (SELECT COUNT(hired_employees.id) AS employee_count
+                    FROM hired_employees
+                    WHERE strftime('%Y', Datetime) = '2021'
+                    GROUP BY hired_employees.department_id) AS avg_table)
+ORDER BY hired DESC;
+    """
+    result = conn.execute(query).fetchall()
+    conn.close()
+
+    response = []
+    for row in result:
+        response.append({
+            'id': row['department'],
+            'department': row['department'],
+            'hired': row['hired']
+        })
+
+    return jsonify(response)
+
+
